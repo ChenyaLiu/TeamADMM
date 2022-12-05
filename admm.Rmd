@@ -1,0 +1,93 @@
+---
+title: "admm"
+author: "zhetao chen"
+date: "2022-12-04"
+output: pdf_document
+---
+
+```{r}
+library(MASS)
+library(expm)
+theta1_update=function(theta2,lam_theta,rho){
+  theta1=diag(p)
+  A=theta2-(s+lam_theta)/rho
+  theta1=(rho*A+sqrtm(rho^2*(A%*%A)+4*rho*diag(p)))/(2*rho)
+  return(theta1)
+}
+gamma1_update=function(gamma2,lam_gamma,gamma){
+  gamma1=diag(p)
+  A=gamma2-lam_gamma/rho
+  for (i in 1:p) {
+    for (j in 1:p) {
+      if(i==j){
+        gamma1[i,j]=A[i,j]
+      }
+      else{
+        gamma1[i,j]=sign(A[i,j])*max(abs(A[i,j])-gamma,0)
+      }
+    }
+  }
+  return(gamma1)
+}
+theta2_updata=function(theta1,gamma1,lam_theta,lam_gamma,lam){
+  A=(theta1+gamma1)/2+(lam_theta+lam_gamma)/(2*rho)
+  for (i in 1:p) {
+  for (j in 1:p) {
+    if(i==j){
+      theta2[i,j]=A[i,j]
+    }
+    else{
+      theta2[i,j]=sign(A[i,j])*min(abs(A[i,j]),lam)
+    }
+  }
+  }
+  return(theta2)
+}
+rho=1
+p=64
+lam=0.2
+cgamma=2.08
+n=1
+theta1=diag(p)
+gamma1=diag(p)
+theta2=diag(p)
+gamma2=diag(p)
+lam_theta=matrix(0,p,p)
+lam_gamma=matrix(0,p,p)
+epsilon=10^(-6)
+error=1
+s1=matrix(rnorm(p^2),p,p)
+sig=s1%*%t(s1)
+m=1000
+s=matrix(0,p,p)
+for (i in 1:m) {
+  x=mvrnorm(1,rep(0,p),sig)
+  s=x%*%t(x)+s
+}
+s=sig
+while (error>epsilon & rho<=10^6) {
+  gamma=cgamma*sqrt(log(p)/n)
+  theta1=theta1_update(theta2,lam_theta,rho)
+  gamma1=gamma1_update(gamma2,lam_gamma,gamma/rho)
+  theta2=theta2_updata(theta1,gamma1,lam_theta,lam_gamma,lam)
+  gamma2=theta2
+  lamtheta=lam_theta+rho*(theta1-theta2)
+  error=sqrt(sum((lamtheta-lam_theta)^2))/max(1,sqrt(sum((lam_theta)^2)))
+  lam_theta=lamtheta
+  lam_gamma=lam_gamma+rho*(gamma1-gamma2)
+  n=n+1
+  if(n%%20==0){
+    rho=rho*2
+  }
+}
+
+sqrt(sum(solve(theta1)-sig)^2)
+
+
+
+
+
+
+
+
+```
